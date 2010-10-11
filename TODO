@@ -1,0 +1,13 @@
+unpacking
+=========
+
+ * Extract images
+ * Post-processing to make links work in dumped HTML
+ * Support PalmDoc compression format
+ * Support huff/cdic compression format
+
+packing
+=======
+ * Start working on packing HTML into mobipocket, instead of just unpacking
+ * Support PalmDoc compression
+ * Support huff/cdic compression
