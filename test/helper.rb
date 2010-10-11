@@ -1,10 +1,13 @@
 require 'rubygems'
 require 'test/unit'
-require 'shoulda'
+# require 'shoulda'
 
 $LOAD_PATH.unshift(File.join(File.dirname(__FILE__), '..', 'lib'))
 $LOAD_PATH.unshift(File.dirname(__FILE__))
 require 'mobipocket'
+
+module Mobipocket::Tests
+end
 
 class Test::Unit::TestCase
 end

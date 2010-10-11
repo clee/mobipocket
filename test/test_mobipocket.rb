@@ -1,7 +1,8 @@
 require 'helper'
 
-class TestMobipocket < Test::Unit::TestCase
-  should "probably rename this file and start testing for real" do
-    flunk "hey buddy, you should probably rename this file and start testing for real"
+class Mobipocket::Tests::Unpack < Test::Unit::TestCase
+  def test_number_of_records
+    mobi = Mobipocket::Unpack.new("test/fixtures/mobi/Doctorow - I, Robot.mobi")
+    assert_equal(33, mobi.records.length)
   end
 end

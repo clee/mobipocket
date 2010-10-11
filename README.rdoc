@@ -1,6 +1,6 @@
 = mobipocket
 
-Description goes here.
+A native Ruby gem for interacting with mobipocket files.
 
 == Note on Patches/Pull Requests
  

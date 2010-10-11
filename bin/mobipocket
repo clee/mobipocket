@@ -1,0 +1,10 @@
+#!/usr/bin/env ruby
+
+require 'mobipocket'
+
+if ARGV.length < 1
+  puts "usage: mobipocket </path/to/book.mobi>"
+  exit(-1)
+end
+
+mobi = Mobipocket::Unpack.new(ARGV[0])
