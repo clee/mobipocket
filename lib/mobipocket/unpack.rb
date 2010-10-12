@@ -49,7 +49,7 @@ class Mobipocket::Unpack
     end
     
     def parse_mobi(record)
-      (compressionType, unused, uncompressedTextLength, recordCount, recordSize, encryptionType, ) = record[:data][0,16].unpack('nnNnnnn')
+      (compressionType, unused, uncompressedTextLength, recordCount, recordSize, encryptionType, ) = record[:data][0,16].unpack('n n N n n n n')
       puts "Compression type: #{compressionType}"
       puts "Uncompressed length: #{uncompressedTextLength}"
       puts "record count/size: #{recordCount}/#{recordSize}"
@@ -60,12 +60,30 @@ class Mobipocket::Unpack
       fullTitle = record[:data][fullTitlePos,fullTitleLength].unpack('a*')
       puts "Full title: #{fullTitle} (pos/len: #{fullTitlePos}/#{fullTitleLength})"
 
-      (extendedHeaderFlags, ) = record[:data][128..131].unpack('B8')
+      (extendedHeaderFlags, ) = record[:data][128,4].unpack('B8')
       if extendedHeaderFlags.to_i(2) & 0x40
         puts "Extended header detected (and r0 length is #{record[:data].length})"
       end
       firstImageRecord = record[:data][108,4].unpack('N')
+      metadata = {}
+      metadata.update(parse_exth(record[:data][(16+headerLength)..-1]))
 
       Mobi.new(fullTitle, 'Sample', recordCount, firstImageRecord)
+    end
+    
+    def parse_exth(exth)
+      (identifier, headerLength, recordCount) = exth[0,12].unpack('a4 N N')
+
+      properties = {}
+      puts "id, len, record count #{identifier} #{headerLength} #{recordCount}"
+      pos = 12
+      for i in 0..(recordCount - 1)
+        (recordType, recordLength) = exth[pos,8].unpack('N N')
+        pos = pos + recordLength
+        recordValue = exth[pos-(recordLength - 8),recordLength-8].unpack('a*')
+        puts "record type #{recordType} value #{recordValue}"
+        properties[recordType] = recordValue
+      end
+      return properties
     end
 end
