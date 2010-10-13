@@ -19,10 +19,11 @@ class Mobipocket::Unpack
       @mobi = parse_mobi(@records[0])
       bookData = ''
       for recordIndex in 1..(@mobi.numberOfBookRecords)
+        puts "record[#{recordIndex}] size is #{@records[recordIndex][:data].length}"
         bookData += @records[recordIndex][:data]
       end
 
-      File.open('/tmp/test.raw', 'w') {|f| f.write(bookData) }
+      File.open("#{mobi_path}-test.raw", 'wb') {|f| f.write(bookData) }
     end
 
     def parse_records(mobifile)
@@ -47,7 +48,7 @@ class Mobipocket::Unpack
 
       records
     end
-    
+
     def parse_mobi(record)
       (compressionType, unused, uncompressedTextLength, recordCount, recordSize, encryptionType, ) = record[:data][0,16].unpack('n n N n n n n')
       puts "Compression type: #{compressionType}"
@@ -70,7 +71,7 @@ class Mobipocket::Unpack
 
       Mobi.new(fullTitle, 'Sample', recordCount, firstImageRecord)
     end
-    
+
     def parse_exth(exth)
       (identifier, headerLength, recordCount) = exth[0,12].unpack('a4 N N')
 
