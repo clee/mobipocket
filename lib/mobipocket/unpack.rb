@@ -38,9 +38,14 @@ class Mobipocket::Unpack
         records << Record.new(offset, uniqueID, nil)
       end
 
-      for recordIndex in 0..(numberOfRecords - 2)
+      records.each_index do |recordIndex|
         currentRecord = records.at(recordIndex)
-        nextRecordOffset = records.at(recordIndex + 1).offset
+        if recordIndex < records.length - 1
+          nextRecordOffset = records.at(recordIndex + 1).offset
+        else
+          mobifile.seek(0, IO::SEEK_END)
+          nextRecordOffset = mobifile.pos
+        end
         recordLength = nextRecordOffset - currentRecord.offset
         mobifile.seek(currentRecord.offset, IO::SEEK_SET)
         currentRecord[:data] = mobifile.read(recordLength)
@@ -73,12 +78,14 @@ class Mobipocket::Unpack
     end
 
     def parse_exth(exth)
-      (identifier, headerLength, recordCount) = exth[0,12].unpack('a4 N N')
+      identifier, headerLength, recordCount = exth[0,12].unpack('a4 N N')
+      raise ArgumentError unless identifier == 'EXTH'
 
       properties = {}
       puts "id, len, record count #{identifier} #{headerLength} #{recordCount}"
       pos = 12
-      for i in 0..(recordCount - 1)
+
+      recordCount.times do |i|
         (recordType, recordLength) = exth[pos,8].unpack('N N')
         pos = pos + recordLength
         recordValue = exth[pos-(recordLength - 8),recordLength-8].unpack('a*')
