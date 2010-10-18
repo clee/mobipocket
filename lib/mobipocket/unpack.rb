@@ -1,6 +1,7 @@
 class Mobipocket::Unpack
   # An array containing the record data from the ebook
   attr_accessor :records
+  attr_accessor :mobi
   Record = Struct.new(:offset, :id, :data)
   Mobi = Struct.new(:title, :author, :numberOfBookRecords, :firstImageRecordIndex)
 
@@ -19,8 +20,7 @@ class Mobipocket::Unpack
       @mobi = parse_mobi(@records[0])
       bookData = ''
       for recordIndex in 1..(@mobi.numberOfBookRecords)
-        puts "record[#{recordIndex}] size is #{@records[recordIndex][:data].length}"
-        bookData += @records[recordIndex][:data]
+        bookData << @records[recordIndex][:data]
       end
 
       File.open("#{mobi_path}-test.raw", 'wb') {|f| f.write(bookData) }
