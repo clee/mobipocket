@@ -2,16 +2,16 @@
 
 require 'enumerator'
 
-class Mobipocket::Unpack::Huffcdic
+class Mobipocket::Huffcdic
   attr_reader :unpacked, :mincode, :maxcode, :dictionary, :dict1
 
-  def initialize(huff, cdics)
+  def initialize(huffRecords)
     @unpacked = ''
-    loadHuff(huff)
+    raise ArgumentError, 'invalid list' if ! huffRecords.respond_to?(:each)
+    loadHuff(huffRecords[0][:data])
 
-    raise ArgumentError, 'cdics isn\'t a list' unless cdics.respond_to?(:each)
-    cdics.each do |cdic|
-        loadCdic(cdic)
+    huffRecords[1..-1].each do |cdic|
+        loadCdic(cdic[:data])
     end
 
     return self

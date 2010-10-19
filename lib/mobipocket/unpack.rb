@@ -1,16 +1,39 @@
+require 'mobipocket/huffcdic'
+require 'mobipocket/palmdoc'
+require 'enumerator'
+
 class Mobipocket::Unpack
   # An array containing the record data from the ebook
   attr_accessor :records
+
+  # A custom struct with some metadata
   attr_accessor :mobi
+
+  # The decompressed string containing the book HTML
+  attr_accessor :uncompressed
+
+  attr_accessor :reader
+
   Record = Struct.new(:offset, :id, :data)
   Mobi = Struct.new(:title, :author, :numberOfBookRecords, :firstImageRecordIndex)
 
   def initialize(mobi_path = nil)
     @records = []
     load_from_path(mobi_path)
+
+    @uncompressed = book_records().collect do |record|
+      data = record.data
+      num = 0
+      data[-4,4].unpack('C4').each do |byte|
+        num = 0 if byte & 0x80
+        num = (num << 7) | (byte & 0x7F)
+      end
+      data = data[0..-num]
+      @reader.unpack(data)
+    end
+
     self
   end
-
 
   protected
     def load_from_path(mobi_path)
@@ -51,12 +74,24 @@ class Mobipocket::Unpack
         currentRecord[:data] = mobifile.read(recordLength)
       end
 
-      records
+      return records
     end
 
     def parse_mobi(record)
       (compressionType, unused, uncompressedTextLength, recordCount, recordSize, encryptionType, ) = record[:data][0,16].unpack('n n N n n n n')
       puts "Compression type: #{compressionType}"
+
+      @reader = nil
+      case compressionType
+      when 17480 then
+        huffoff, hufflen = record[:data][112,8].unpack('N N')
+        @reader = Mobipocket::Huffcdic.new(@records[huffoff,hufflen])
+      when 2 then
+        @reader = Mobipocket::PalmDoc.new
+      else
+        @reader = Class.new do def unpack(data) return data end; end.new
+      end
+
       puts "Uncompressed length: #{uncompressedTextLength}"
       puts "record count/size: #{recordCount}/#{recordSize}"
       (mobiID, headerLength, mobiType, textEncoding, uniqueID, generatorVersion) = record[:data][16,24].unpack('N N N N N N')
@@ -89,9 +124,12 @@ class Mobipocket::Unpack
         (recordType, recordLength) = exth[pos,8].unpack('N N')
         pos = pos + recordLength
         recordValue = exth[pos-(recordLength - 8),recordLength-8].unpack('a*')
-        puts "record type #{recordType} value #{recordValue}"
         properties[recordType] = recordValue
       end
       return properties
+    end
+
+    def book_records
+      return @records[1,@mobi.numberOfBookRecords]
     end
 end

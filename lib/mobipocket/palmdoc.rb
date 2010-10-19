@@ -1,13 +1,12 @@
 #!/usr/bin/env ruby
 
-class Mobipocket::Unpack::PalmDoc  
+class Mobipocket::PalmDoc  
   attr_accessor :unpacked
 
-  def initialize(input)
-    @unpacked = unpack(input)
+  def initialize
     return self
   end
-  
+
   def unpack(data)
     output = ''
     position = 0
