@@ -50,9 +50,9 @@ class Mobipocket::Unpack
     end
 
     def parse_records(mobifile)
-      # FIXME: This is a hack, but it works. We should read all of 
+      # FIXME: This is a hack, but it works. We should read all of
       # the fields, not just this one.
-      mobifile.seek(76, IO::SEEK_SET) 
+      mobifile.seek(0x4C, IO::SEEK_SET)
       (numberOfRecords, ) = mobifile.read(2).unpack('n')
 
       numberOfRecords.times do

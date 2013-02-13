@@ -1,6 +1,6 @@
 #!/usr/bin/env ruby
 
-class Mobipocket::PalmDoc  
+class Mobipocket::PalmDoc
   attr_accessor :unpacked
 
   def initialize
@@ -22,8 +22,8 @@ class Mobipocket::PalmDoc
       when 0xC0..0xFF then
         output << 0x20 << (currentByte ^ 0x80)
       when 0x80..0xBF then
-        if !(position < data.length)
-          raise IndexError
+        if position >= data.length
+          break
         end
 
         currentByte = ((currentByte << 8) | data[position].ord)
