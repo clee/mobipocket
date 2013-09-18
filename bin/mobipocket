@@ -3,8 +3,10 @@
 require 'mobipocket'
 
 if ARGV.length < 1
-  puts "usage: mobipocket </path/to/book.mobi>"
+  puts "usage: mobipocket </path/to/book1.mobi> [book2.mobi, ...]"
   exit(-1)
 end
 
-mobi = Mobipocket::Unpack.new(ARGV[0])
+ARGV.each do |path|
+  mobi = Mobipocket::Unpack.new(path)
+end
