@@ -23,7 +23,7 @@ class Mobipocket::PalmDoc
         output << 0x20 << (currentByte ^ 0x80)
       when 0x80..0xBF then
         if position >= data.length
-          break
+          next
         end
 
         currentByte = ((currentByte << 8) | data[position].ord)
@@ -84,7 +84,7 @@ class Mobipocket::PalmDoc
         output << currentChar
       else
         nextChunk = data[(offset-1)..-1]
-        if nextChunk =~ /([\x01-\x08\x80-\xff]{1,8})/o
+        if nextChunk =~ /([\x01-\x08\x80-\xFF]{1,8})/no
           literals = Regexp.last_match(1)
           output << literals.length
           output << literals
