@@ -13,6 +13,7 @@ class Mobipocket::Unpack
   attr_accessor :uncompressed
 
   attr_accessor :reader
+  attr_accessor :metadata
 
   Record = Struct.new(:offset, :id, :data)
   Mobi = Struct.new(:title, :author, :numberOfBookRecords, :firstImageRecordIndex)
@@ -106,18 +107,20 @@ class Mobipocket::Unpack
         puts "Extended header detected (and r0 length is #{record[:data].length})"
       end
       firstImageRecord = record[:data][108,4].unpack('N')
-      metadata = {}
-      metadata.update(parse_exth(record[:data][(16+headerLength)..-1]))
+      @metadata = parse_exth(record[:data][(16+headerLength)..-1])
+      @metadata.each do |k, v|
+        puts "\t#{k}: #{v}"
+      end
 
       Mobi.new(fullTitle, 'Sample', recordCount, firstImageRecord)
     end
 
     def parse_exth(exth)
       identifier, headerLength, recordCount = exth[0,12].unpack('a4 N N')
+      puts "id/len/record count: #{identifier}/#{headerLength}/#{recordCount}"
       raise ArgumentError unless identifier == 'EXTH'
 
       properties = {}
-      puts "id, len, record count #{identifier} #{headerLength} #{recordCount}"
       pos = 12
 
       recordCount.times do |i|
