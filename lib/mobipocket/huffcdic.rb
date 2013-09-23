@@ -5,10 +5,24 @@ require 'enumerator'
 class Mobipocket::Huffcdic
   attr_reader :unpacked, :mincode, :maxcode, :dictionary, :dict1
 
+  def get_64bit_int_slow(quad)
+    return quad.unpack('B64')[0].to_i(2)
+  end
+
+  def get_64bit_int_fast(quad)
+    return quad.unpack('Q>')[0]
+  end
+
   def initialize(huffRecords)
     @unpacked = ''
     raise ArgumentError, 'invalid list' if ! huffRecords.respond_to?(:each)
     loadHuff(huffRecords[0][:data])
+
+    if RUBY_VERSION >= "1.9.3"
+      alias get_64bit_int get_64bit_int_fast
+    else
+      alias get_64bit_int get_64bit_int_slow
+    end
 
     huffRecords[1..-1].each do |cdic|
         loadCdic(cdic[:data])
@@ -58,13 +72,13 @@ class Mobipocket::Huffcdic
     bitsleft = data.length * 8
     data << "\0\0\0\0\0\0\0\0"
     position = 0
-    x = data[position,8].unpack('B64')[0].to_i(2)
+    x = get_64bit_int(data[position,8])
     n = 32
 
     while true
         if n <= 0
             position += 4
-            x = data[position,8].unpack('B64')[0].to_i(2)
+            x = get_64bit_int(data[position,8])
             n += 32
         end
         code = (x >> n) & ((1 << 32) - 1)
