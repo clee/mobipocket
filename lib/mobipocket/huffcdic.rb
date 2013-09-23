@@ -3,7 +3,7 @@
 require 'enumerator'
 
 class Mobipocket::Huffcdic
-  attr_reader :unpacked, :mincode, :maxcode, :dictionary, :dict1
+  attr_reader :mincode, :maxcode, :dictionary, :dict1
 
   def get_64bit_int_slow(quad)
     return quad.unpack('B64')[0].to_i(2)
@@ -14,7 +14,6 @@ class Mobipocket::Huffcdic
   end
 
   def initialize(huffRecords)
-    @unpacked = ''
     raise ArgumentError, 'invalid list' unless huffRecords.respond_to?(:each)
     loadHuff(huffRecords[0][:data])
 
@@ -106,4 +105,36 @@ class Mobipocket::Huffcdic
 
     return output
   end
+
+  def cdics_from(dictionary)
+    offsets = [[]]
+    cdics = ['']
+    currentOffset = 0
+    dictionary.each do |data, flag|
+      raise ArgumentError, "data too long for cdic!" if data.length > 0x7FFF
+
+      # offsets are 16-bit unsigned ints, so if we overflow, start a new cdic
+      if currentOffset > 0xFFFF
+        currentOffset = 0
+        cdics << ''
+        offsets << []
+      end
+
+      offsets.last << currentOffset
+      l = data.length | flag
+      cdics.last << [l].pack('n') << data
+
+      currentOffset = currentOffset + 2 + l
+    end
+
+    for index in 0..(cdics.length-1)
+      o = offsets[index].collect do |tmp_offset|
+        tmp_offset + (2 * offsets[index].length)
+      end
+      cdics[index] = (['CDIC', 0x10, 0x00, 0x00].pack('A4 N3') << o.pack('n*') << cdics[index])
+    end
+
+    return cdics
+  end
+
 end
