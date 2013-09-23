@@ -18,7 +18,7 @@ class Mobipocket::Huffcdic
     raise ArgumentError, 'invalid list' unless huffRecords.respond_to?(:each)
     loadHuff(huffRecords[0][:data])
 
-    if RUBY_VERSION >= "1.9.3"
+    if "\x01\x02\x03\x04\x05\x06\x07\x08".unpack("Q>")[0] == 0x0102030405060708
       alias get_64bit_int get_64bit_int_fast
     else
       alias get_64bit_int get_64bit_int_slow
