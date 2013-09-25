@@ -22,9 +22,7 @@ class Mobipocket::PalmDoc
       when 0xC0..0xFF then
         output << 0x20 << (currentByte ^ 0x80)
       when 0x80..0xBF then
-        if position >= data.length
-          next
-        end
+        break if position >= data.length
 
         currentByte = ((currentByte << 8) | data[position].ord)
         position += 1
