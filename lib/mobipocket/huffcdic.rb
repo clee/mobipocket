@@ -80,7 +80,7 @@ class Mobipocket::Huffcdic
         x = get_64bit_int(data[position,8])
         n += 32
       end
-      code = (x >> n) & ((1 << 32) - 1)
+      code = (x >> n) & 0xFFFF_FFFF
 
       codelen, term, maxcode = @dict1[code >> 24]
       if term == 0
