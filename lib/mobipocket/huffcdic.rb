@@ -62,7 +62,7 @@ class Mobipocket::Huffcdic
 
     cdic[0x10,n*2].unpack("n#{n}").each do |off|
       blen, = cdic[off+0x10,2].unpack('n')
-      @dictionary << [cdic[off+0x12,(blen & 0x7FFF)], blen & 0x8000]
+      @dictionary << [cdic[off+0x12,(blen & 0x7FFF)], (blen & 0x8000) >> 15]
     end
   end
 
@@ -121,20 +121,21 @@ class Mobipocket::Huffcdic
       end
 
       offsets.last << currentOffset
-      l = data.length | flag
-      cdics.last << [l].pack('n') << data
+      flaggedLength = data.length | (flag << 15)
+      cdics.last << [flaggedLength].pack('n') << data
 
-      currentOffset = currentOffset + 2 + l
+      currentOffset = currentOffset + 2 + data.length
     end
 
+    r = []
     for index in 0..(cdics.length-1)
       o = offsets[index].collect do |tmp_offset|
         tmp_offset + (2 * offsets[index].length)
       end
-      cdics[index] = (['CDIC', 0x10, 0x00, 0x00].pack('A4 N3') << o.pack('n*') << cdics[index])
+      r[index] = (['CDIC', 0x10, dictionary.length, 0x00].pack('A4 N3') << o.pack('n*') << cdics[index])
     end
 
-    return cdics
+    return r
   end
 
 end
