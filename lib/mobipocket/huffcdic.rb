@@ -43,7 +43,7 @@ class Mobipocket::Huffcdic
       [codelen, term, maxcode]
     end
 
-    dict2 = huff[off2,0x200].unpack('N64').insert(0, 0, 0)
+    dict2 = huff[off2,0x100].unpack('N64').insert(0, 0, 0)
     @mincode, @maxcode, codelen = [], [], 0
     dict2.each_slice(2) do |currentMinCode, currentMaxCode|
       @mincode << (currentMinCode << (32 - codelen))
