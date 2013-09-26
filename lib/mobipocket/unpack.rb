@@ -14,6 +14,7 @@ class Mobipocket::Unpack
 
   attr_accessor :reader
   attr_accessor :metadata
+  attr_accessor :predictionary
 
   Record = Struct.new(:offset, :id, :data)
   Mobi = Struct.new(:title, :author, :numberOfBookRecords, :firstImageRecordIndex)
@@ -26,7 +27,7 @@ class Mobipocket::Unpack
       data = record.data
       num = 0
       data[-4,4].unpack('C4').each do |byte|
-        num = 0 if byte & 0x80
+        num = 0 if (byte & 0x80 == 0x80)
         num = (num << 7) | (byte & 0x7F)
       end
       data = data[0..-num]
@@ -46,15 +47,13 @@ class Mobipocket::Unpack
       for recordIndex in 1..(@mobi.numberOfBookRecords)
         bookData << @records[recordIndex][:data]
       end
-
-      File.open("#{mobi_path}-test.raw", 'wb') {|f| f.write(bookData) }
     end
 
     def parse_records(mobifile)
       # FIXME: This is a hack, but it works. We should read all of
       # the fields, not just this one.
       mobifile.seek(0x4C, IO::SEEK_SET)
-      (numberOfRecords, ) = mobifile.read(2).unpack('n')
+      (numberOfRecords,) = mobifile.read(2).unpack('n')
 
       numberOfRecords.times do
         (offset, attrib, uniqueID) = mobifile.read(8).unpack('N B8 B24')
@@ -85,8 +84,9 @@ class Mobipocket::Unpack
       @reader = nil
       case compressionType
       when 17480 then
-        huffoff, hufflen = record[:data][112,8].unpack('N N')
+        (huffoff, hufflen) = record[:data][112,8].unpack('N N')
         @reader = Mobipocket::Huffcdic.new(@records[huffoff,hufflen])
+        @predictionary = @reader.dictionary.dup
       when 2 then
         @reader = Mobipocket::PalmDoc.new
       else
@@ -99,24 +99,24 @@ class Mobipocket::Unpack
       puts "Header length: #{headerLength}"
 
       (fullTitlePos, fullTitleLength) = record[:data][84,8].unpack('N N')
-      fullTitle = record[:data][fullTitlePos,fullTitleLength].unpack('a*')
+      (fullTitle,) = record[:data][fullTitlePos,fullTitleLength].unpack('a*')
       puts "Full title: #{fullTitle} (pos/len: #{fullTitlePos}/#{fullTitleLength})"
 
-      (extendedHeaderFlags, ) = record[:data][128,4].unpack('B8')
-      if extendedHeaderFlags.to_i(2) & 0x40
-        puts "Extended header detected (and r0 length is #{record[:data].length})"
+      (extendedHeaderFlags,) = record[:data][0x80,4].unpack('N')
+      if extendedHeaderFlags & 0x40 == 0x40
+        puts "Extended header #{extendedHeaderFlags} (r0 length is #{record[:data].length})"
+        @metadata = parse_exth(record[:data][(16+headerLength)..-1])
+        @metadata.each do |k, v|
+          puts "\t#{k}: #{v}"
+        end
       end
-      firstImageRecord = record[:data][108,4].unpack('N')
-      @metadata = parse_exth(record[:data][(16+headerLength)..-1])
-      @metadata.each do |k, v|
-        puts "\t#{k}: #{v}"
-      end
+      (firstImageRecord,) = record[:data][108,4].unpack('N')
 
       Mobi.new(fullTitle, 'Sample', recordCount, firstImageRecord)
     end
 
     def parse_exth(exth)
-      identifier, headerLength, recordCount = exth[0,12].unpack('a4 N N')
+      (identifier, headerLength, recordCount) = exth[0,12].unpack('a4 N N')
       puts "id/len/record count: #{identifier}/#{headerLength}/#{recordCount}"
       raise ArgumentError unless identifier == 'EXTH'
 
@@ -126,7 +126,8 @@ class Mobipocket::Unpack
       recordCount.times do |i|
         (recordType, recordLength) = exth[pos,8].unpack('N N')
         pos = pos + recordLength
-        recordValue = exth[pos-(recordLength - 8),recordLength-8].unpack('a*')
+        (recordValue,) = exth[pos-(recordLength-8),recordLength-8].unpack('a*')
+        (recordValue,) = recordValue.unpack("N") if recordValue.include? "\x00"
         properties[recordType] = recordValue
       end
       return properties
