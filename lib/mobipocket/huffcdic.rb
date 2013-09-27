@@ -5,14 +5,6 @@ require 'enumerator'
 class Mobipocket::Huffcdic
   attr_reader :mincode, :maxcode, :dictionary, :dict1
 
-  def get_64bit_int_slow(quad)
-    return quad.unpack('B64')[0].to_i(2)
-  end
-
-  def get_64bit_int_fast(quad)
-    return quad.unpack('Q>')[0]
-  end
-
   def initialize(huffRecords)
     raise ArgumentError, 'invalid list' unless huffRecords.respond_to?(:each)
     loadHuff(huffRecords[0][:data])
@@ -138,4 +130,12 @@ class Mobipocket::Huffcdic
     return r
   end
 
+  private 
+  def get_64bit_int_slow(quad)
+    return quad.unpack('B64')[0].to_i(2)
+  end
+
+  def get_64bit_int_fast(quad)
+    return quad.unpack('Q>')[0]
+  end
 end
