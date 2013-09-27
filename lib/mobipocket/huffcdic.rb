@@ -98,15 +98,20 @@ class Mobipocket::Huffcdic
     return output
   end
 
-  def cdics_from(dictionary)
+  def cdicsFrom(dictionary)
     offsets = [[]]
     cdics = ['']
     currentOffset = 0
+    l = dictionary.length
+
+    numberOfBits = 0
+    numberOfBits += 1 while (l >>= 1) > 0
+
     dictionary.each do |data, flag|
       raise ArgumentError, "data too long for cdic!" if data.length > 0x7FFF
 
       # offsets are 16-bit unsigned ints, so if we overflow, start a new cdic
-      if currentOffset > 0xFFFF
+      if currentOffset > 0xFFFF || (offsets.last.length == (1 << numberOfBits))
         currentOffset = 0
         cdics << ''
         offsets << []
@@ -121,10 +126,10 @@ class Mobipocket::Huffcdic
 
     r = []
     for index in 0..(cdics.length-1)
-      o = offsets[index].collect do |tmp_offset|
-        tmp_offset + (2 * offsets[index].length)
+      o = offsets[index].collect do |originalOffset|
+        originalOffset + (2 * offsets[index].length)
       end
-      r[index] = (['CDIC', 0x10, dictionary.length, 0x00].pack('A4 N3') << o.pack('n*') << cdics[index])
+      r[index] = (['CDIC', 0x10, dictionary.length, numberOfBits].pack('A4 N3') << o.pack("n#{o.length}") << cdics[index])
     end
 
     return r
