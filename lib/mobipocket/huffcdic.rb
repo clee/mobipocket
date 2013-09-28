@@ -3,7 +3,10 @@
 require 'enumerator'
 
 class Mobipocket::Huffcdic
-  attr_reader :mincode, :maxcode, :dictionary, :dict1
+  attr_reader :mincode, :maxcode, :predictionary, :dict1
+  attr_accessor :dictionary
+
+  CDICEntry = Struct.new(:length, :expanded, :data)
 
   def initialize(huffRecords)
     raise ArgumentError, 'invalid list' unless huffRecords.respond_to?(:each)
@@ -15,9 +18,13 @@ class Mobipocket::Huffcdic
       alias get_64bit_int get_64bit_int_slow
     end
 
+    @dictionary = []
+
     huffRecords[1..-1].each do |cdic|
-      loadCdic(cdic[:data])
+      @dictionary.concat(loadCdic(cdic[:data]))
     end
+
+    @predictionary = Marshal.load(Marshal.dump(@dictionary))
 
     return self
   end
@@ -42,19 +49,19 @@ class Mobipocket::Huffcdic
       @maxcode << ((currentMaxCode + 1) << (32 - codelen)) - 1
       codelen += 1
     end
-
-    @dictionary = []
   end
 
-  def loadCdic(cdic)
+  def loadCdic(cdic, n=nil)
     raise ArgumentError, 'Invalid CDIC header' if cdic[0,8] != "CDIC\0\0\0\x10"
 
     phrases, bits = cdic[8,8].unpack('N N')
-    n = [phrases - @dictionary.length, 1 << bits].min
+    n = n || [phrases - @dictionary.length, 1 << bits].min
 
-    cdic[0x10,n*2].unpack("n#{n}").each do |off|
-      blen, = cdic[off+0x10,2].unpack('n')
-      @dictionary << [cdic[off+0x12,(blen & 0x7FFF)], (blen & 0x8000) >> 15]
+    return cdic[0x10,n*2].unpack("n#{n}").collect do |off|
+      flaggedLength, = cdic[off+0x10,2].unpack('n')
+      expanded = flaggedLength & 0x8000 == 0x8000
+      length = flaggedLength & 0x7FFF
+      CDICEntry.new(length, expanded, cdic[off+0x12,length])
     end
   end
 
@@ -86,12 +93,13 @@ class Mobipocket::Huffcdic
       break if bitsleft < 0
 
       r = ((maxcode - code) >> (32 - codelen))
-      chunk, flag = @dictionary[r]
-      if flag == 0
-        @dictionary[r] = [nil, 1]
+      chunk = @dictionary[r][:data]
+      if not @dictionary[r][:expanded]
+        @dictionary[r] = CDICEntry.new(0, true, '')
         chunk = unpack(chunk)
-        @dictionary[r] = [chunk, 1]
+        @dictionary[r] = CDICEntry.new(chunk.length, true, chunk)
       end
+
       output << chunk
     end
 
@@ -107,8 +115,8 @@ class Mobipocket::Huffcdic
     numberOfBits = 0
     numberOfBits += 1 while (l >>= 1) > 0
 
-    dictionary.each do |data, flag|
-      raise ArgumentError, "data too long for cdic!" if data.length > 0x7FFF
+    dictionary.each do |c|
+      raise ArgumentError, "data too long for cdic!" if c[:length] > 0x7FFF
 
       # offsets are 16-bit unsigned ints, so if we overflow, start a new cdic
       if currentOffset > 0xFFFF || (offsets.last.length == (1 << numberOfBits))
@@ -118,10 +126,12 @@ class Mobipocket::Huffcdic
       end
 
       offsets.last << currentOffset
-      flaggedLength = data.length | (flag << 15)
-      cdics.last << [flaggedLength].pack('n') << data
 
-      currentOffset = currentOffset + 2 + data.length
+      flaggedLength = c[:length]
+      flaggedLength |= 0x8000 if c[:expanded]
+      cdics.last << [flaggedLength].pack('n') << c[:data]
+
+      currentOffset = currentOffset + 2 + c[:length]
     end
 
     r = []
@@ -135,7 +145,7 @@ class Mobipocket::Huffcdic
     return r
   end
 
-  private 
+  private
   def get_64bit_int_slow(quad)
     return quad.unpack('B64')[0].to_i(2)
   end
