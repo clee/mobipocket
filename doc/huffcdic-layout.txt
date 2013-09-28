@@ -1,0 +1,41 @@
+HUFF record layout
+==================
+
+offset | length | wtf
+0x00   | 4      | "HUFF"
+0x04   | 4      | big-endian uint32, value = 0x18
+0x08   | 4      | big-endian uint32, big-endian cache table offset, value = 0x18
+0x0c   | 4      | big-endian uint32, big-endian base table offset, value = 0x418
+0x10   | 4      | big-endian uint32, little-endian cache table offset, value = 0x518
+0x14   | 4      | big-endian uint32, little-endian base table offset, value = 0x918
+0x18   | 1024   | 256 big-endian uint32 values, cache table
+0x418  | 256    | 64 big-endian uint32 values, base table
+0x518  | 1024   | 256 little-endian uint32 values, cache table
+0x918  | 256    | 64 little-endian uint32 values, base table
+
+The cache table
+---------------
+This is a look up table for the length and decoding of short codewords. If the codeword represented by the 8 bits is unique, then bit 7 (0x80) will be set, and the low 5 bits are the length in bits of the code. The high three bytes partially represent the final symbol.
+
+If bit 7 is clear, then the code is looked up in the base table
+
+The base table
+--------------
+This is where the codeword is looked up if it isn't found in the cache table.
+
+
+CDIC record layout
+==================
+offset | length | wtf
+0x00   | 4      | "CDIC"
+0x04   | 4      | big-endian uint32, header length, value = 0x10
+0x08   | 4      | big-endian uint32, index count - number of offsets
+0x0C   | 4      | big-endian uint32, codelength - bits required to represent size of dictionary
+0x10   | nnn    | nnn big-endian uint16 values, offsets to dictionary data
+????   | ????   | dictionary data, packed in the following format
+
+
+CDIC dictionary data layout
+offset | length | wtf
+n      | 2      | big-endian uint16, fully-expanded flag + 15 bits of length-of-data
+n+2    | ????   | raw string, dictionary data
