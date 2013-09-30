@@ -14,7 +14,6 @@ class Mobipocket::Unpack
 
   attr_accessor :reader
   attr_accessor :metadata
-  attr_accessor :predictionary
 
   Record = Struct.new(:offset, :id, :data)
   Mobi = Struct.new(:title, :author, :numberOfBookRecords, :firstImageRecordIndex)
@@ -23,7 +22,13 @@ class Mobipocket::Unpack
     @records = []
     load_from_path(mobi_path)
 
-    @uncompressed = book_records().collect do |record|
+    @uncompressed = uncompressed_book_text()
+
+    self
+  end
+
+  def uncompressed_book_text()
+    book_records().collect do |record|
       data = record.data
       num = 0
       data[-4,4].unpack('C4').each do |byte|
@@ -33,8 +38,6 @@ class Mobipocket::Unpack
       data = data[0..-num]
       @reader.unpack(data)
     end
-
-    self
   end
 
   protected
@@ -86,7 +89,6 @@ class Mobipocket::Unpack
       when 17480 then
         (huffoff, hufflen) = record[:data][112,8].unpack('N N')
         @reader = Mobipocket::Huffcdic.new(@records[huffoff,hufflen])
-        @predictionary = @reader.dictionary.dup
       when 2 then
         @reader = Mobipocket::PalmDoc.new
       else
